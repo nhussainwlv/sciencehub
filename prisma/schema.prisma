@@ -1,0 +1,490 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+  PARENT
+  ADMIN
+}
+
+enum KeyStage {
+  KS2
+  KS3
+  KS4
+}
+
+enum ExamBoard {
+  AQA
+  EDEXCEL
+  OCR
+  NONE
+}
+
+enum SciencePathway {
+  COMBINED
+  TRIPLE
+}
+
+enum GcseTier {
+  FOUNDATION
+  HIGHER
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  DRAG_DROP
+  MATCHING
+  CALCULATION
+  SHORT_ANSWER
+  EXAM_STYLE
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ContentType {
+  LESSON
+  DIAGRAM
+  ANIMATION
+  VIDEO
+  WORKED_EXAMPLE
+  SIMULATION
+  FLASHCARD
+  REVISION_NOTE
+  PRACTICAL
+  MISCONCEPTION
+  EXAM_TECHNIQUE
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  role          UserRole  @default(STUDENT)
+  avatarUrl     String?
+  yearGroup     Int?
+  keyStage      KeyStage?
+  examBoard     ExamBoard @default(NONE)
+  pathway       SciencePathway?
+  gcseTier      GcseTier?
+  xp            Int       @default(0)
+  level         Int       @default(1)
+  streak        Int       @default(0)
+  lastActiveAt  DateTime?
+  preferences   Json      @default("{}")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  studentProfile  StudentProfile?
+  teacherProfile  TeacherProfile?
+  parentProfile   ParentProfile?
+
+  quizAttempts    QuizAttempt[]
+  lessonProgress  LessonProgress[]
+  topicMastery    TopicMastery[]
+  achievements    UserAchievement[]
+  dailyChallenges DailyChallengeCompletion[]
+  examAttempts    ExamAttempt[]
+  aiConversations AiConversation[]
+  studyGoals      StudyGoal[]
+  notifications   Notification[]
+
+  taughtClasses   Class[]        @relation("TeacherClasses")
+  enrolledClasses ClassMember[]
+  parentLinks     ParentStudent[] @relation("ParentUser")
+  childLinks      ParentStudent[] @relation("StudentUser")
+  assignments     Assignment[]   @relation("AssignmentCreator")
+  submissions     AssignmentSubmission[]
+}
+
+model StudentProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  predictedGrade  String?
+  totalStudyMinutes Int    @default(0)
+  dyslexiaMode    Boolean  @default(false)
+  ttsEnabled      Boolean  @default(false)
+  language        String   @default("en")
+  darkMode        Boolean  @default(false)
+}
+
+model TeacherProfile {
+  id        String @id @default(cuid())
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school    String?
+  department String?
+}
+
+model ParentProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ParentStudent {
+  id        String   @id @default(cuid())
+  parentId  String
+  studentId String
+  parent    User     @relation("ParentUser", fields: [parentId], references: [id], onDelete: Cascade)
+  student   User     @relation("StudentUser", fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([parentId, studentId])
+}
+
+model Subject {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  keyStage    KeyStage
+  description String?
+  icon        String?
+  color       String?
+  orderIndex  Int       @default(0)
+  topics      Topic[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Topic {
+  id          String    @id @default(cuid())
+  subjectId   String
+  subject     Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String?
+  orderIndex  Int       @default(0)
+  examBoards  ExamBoard[]
+  keyStage    KeyStage
+  subtopics   Subtopic[]
+  questions   Question[]
+  mastery     TopicMastery[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([subjectId, slug])
+  @@index([keyStage])
+}
+
+model Subtopic {
+  id          String      @id @default(cuid())
+  topicId     String
+  topic       Topic       @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String?
+  orderIndex  Int         @default(0)
+  contents    Content[]
+  questions   Question[]
+  lessonProgress LessonProgress[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([topicId, slug])
+}
+
+model Content {
+  id          String      @id @default(cuid())
+  subtopicId  String
+  subtopic    Subtopic    @relation(fields: [subtopicId], references: [id], onDelete: Cascade)
+  type        ContentType
+  title       String
+  body        String      @db.Text
+  mediaUrl    String?
+  metadata    Json        @default("{}")
+  examBoard   ExamBoard?
+  gcseTier    GcseTier?
+  orderIndex  Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([subtopicId, type])
+}
+
+model Question {
+  id            String       @id @default(cuid())
+  topicId       String
+  topic         Topic        @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  subtopicId    String?
+  subtopic      Subtopic?    @relation(fields: [subtopicId], references: [id], onDelete: SetNull)
+  type          QuestionType
+  difficulty    Difficulty
+  questionText  String       @db.Text
+  options       Json?
+  correctAnswer Json
+  explanation   String?      @db.Text
+  marks         Int          @default(1)
+  examBoard     ExamBoard?
+  gcseTier      GcseTier?
+  tags          String[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  quizAnswers QuizAnswer[]
+
+  @@index([topicId, difficulty])
+  @@index([examBoard, gcseTier])
+}
+
+model Quiz {
+  id          String   @id @default(cuid())
+  title       String
+  topicId     String?
+  description String?
+  timeLimit   Int?
+  questionIds String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  attempts QuizAttempt[]
+}
+
+model QuizAttempt {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId      String
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  score       Float
+  totalMarks  Int
+  earnedMarks Int
+  timeSpent   Int?
+  completedAt DateTime @default(now())
+  answers     QuizAnswer[]
+
+  @@index([userId])
+}
+
+model QuizAnswer {
+  id         String      @id @default(cuid())
+  attemptId  String
+  attempt    QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answer     Json
+  isCorrect  Boolean
+  marks      Int         @default(0)
+}
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subtopicId  String
+  subtopic    Subtopic @relation(fields: [subtopicId], references: [id], onDelete: Cascade)
+  completed   Boolean  @default(false)
+  progress    Float    @default(0)
+  timeSpent   Int      @default(0)
+  lastAccessed DateTime @default(now())
+
+  @@unique([userId, subtopicId])
+}
+
+model TopicMastery {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topicId         String
+  topic           Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  masteryPercent  Float    @default(0)
+  questionsAnswered Int    @default(0)
+  questionsCorrect  Int    @default(0)
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, topicId])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  xpReward    Int      @default(0)
+  criteria    Json
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  earnedAt      DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+}
+
+model DailyChallenge {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  xpReward    Int      @default(50)
+  criteria    Json
+  date        DateTime @unique @db.Date
+  completions DailyChallengeCompletion[]
+}
+
+model DailyChallengeCompletion {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId String
+  challenge   DailyChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  completedAt DateTime       @default(now())
+
+  @@unique([userId, challengeId])
+}
+
+model Class {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  teacherId   String
+  teacher     User     @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
+  keyStage    KeyStage
+  yearGroup   Int
+  members     ClassMember[]
+  assignments Assignment[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ClassMember {
+  id        String   @id @default(cuid())
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt  DateTime @default(now())
+
+  @@unique([classId, userId])
+}
+
+model Assignment {
+  id          String   @id @default(cuid())
+  classId     String
+  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  creatorId   String
+  creator     User     @relation("AssignmentCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  topicIds    String[]
+  dueDate     DateTime
+  createdAt   DateTime @default(now())
+  submissions AssignmentSubmission[]
+}
+
+model AssignmentSubmission {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  completed    Boolean    @default(false)
+  score        Float?
+  submittedAt  DateTime?
+
+  @@unique([assignmentId, studentId])
+}
+
+model ExamPaper {
+  id           String    @id @default(cuid())
+  title        String
+  examBoard    ExamBoard
+  pathway      SciencePathway
+  gcseTier     GcseTier
+  subject      String
+  paperNumber  Int
+  timeLimit    Int
+  totalMarks   Int
+  questions    Json
+  markScheme   Json
+  gradeBoundaries Json
+  examinerReport String? @db.Text
+  createdAt    DateTime  @default(now())
+
+  attempts ExamAttempt[]
+}
+
+model ExamAttempt {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examPaperId String
+  examPaper   ExamPaper @relation(fields: [examPaperId], references: [id], onDelete: Cascade)
+  score       Float
+  totalMarks  Int
+  earnedMarks Int
+  grade       String?
+  timeSpent   Int
+  answers     Json
+  completedAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model AiConversation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  messages  Json
+  context   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model StudyGoal {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  target      Int
+  progress    Int      @default(0)
+  unit        String
+  deadline    DateTime?
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  type      String
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model LeaderboardEntry {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  userName  String
+  xp        Int      @default(0)
+  level     Int      @default(1)
+  streak    Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@index([xp(sort: Desc)])
+}
