@@ -8,11 +8,15 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { generateQuestionsForTopic } from "@/lib/quiz-generator";
+import { generateQuestionsFromConcepts } from "@/lib/quiz-generator";
 import type { GeneratedQuestion } from "@/lib/quiz-generator";
+import { findTopic, enrichCurriculumTopic } from "@/data/curriculum";
+import type { KeyStage } from "@prisma/client";
 
 export default function QuizPage() {
   const params = useParams();
+  const keyStage = (params.keyStage as string).toUpperCase() as KeyStage;
+  const subjectSlug = params.subject as string;
   const topicSlug = params.topic as string;
   const topicName = topicSlug?.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) ?? "Science";
 
@@ -26,8 +30,18 @@ export default function QuizPage() {
   const [answers, setAnswers] = useState<boolean[]>([]);
 
   useEffect(() => {
-    setQuestions(generateQuestionsForTopic(topicName, topicName, 40));
-  }, [topicName]);
+    const { topic } = findTopic(keyStage, subjectSlug, topicSlug);
+    if (topic) {
+      const enriched = enrichCurriculumTopic(keyStage, subjectSlug, topic);
+      setQuestions(generateQuestionsFromConcepts(enriched.keyConcepts, enriched.name, 40));
+      return;
+    }
+    setQuestions(generateQuestionsFromConcepts(
+      [{ term: topicName, definition: `Core ideas in ${topicName} for ${keyStage} science.` }],
+      topicName,
+      40
+    ));
+  }, [keyStage, subjectSlug, topicSlug, topicName]);
 
   useEffect(() => {
     if (finished || questions.length === 0) return;

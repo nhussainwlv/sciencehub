@@ -30,11 +30,14 @@ const teacherNav = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isAuthPage = pathname === "/login" || pathname === "/register" || pathname === "/";
   if (isAuthPage) return null;
+
+  const isAuthenticated = status === "authenticated" && !!session?.user;
+  const isLoading = status === "loading";
 
   const nav = session?.user?.role === "TEACHER" ? teacherNav : studentNav;
 
@@ -48,7 +51,7 @@ export function Navbar() {
           <span className="text-lg font-bold tracking-tight">Science Hub</span>
         </Link>
 
-        {session && (
+        {isAuthenticated && (
           <nav className="hidden items-center gap-1 md:flex">
             {nav.map(({ href, label, icon: Icon }) => (
               <Link
@@ -70,7 +73,9 @@ export function Navbar() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle className="hidden sm:inline-flex" />
-          {session ? (
+          {isLoading ? (
+            <div className="h-9 w-24 animate-pulse rounded-lg bg-[var(--surface)]" aria-hidden />
+          ) : isAuthenticated ? (
             <>
               <Link href="/search" className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]">
                 <Search className="h-5 w-5" />
@@ -104,7 +109,7 @@ export function Navbar() {
         </div>
       </div>
 
-      {mobileOpen && session && (
+      {mobileOpen && isAuthenticated && session && (
         <nav className="border-t border-[var(--border)] px-4 py-3 md:hidden">
           {nav.map(({ href, label, icon: Icon }) => (
             <Link

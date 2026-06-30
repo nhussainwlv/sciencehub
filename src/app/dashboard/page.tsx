@@ -10,12 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getGreeting, formatPercent } from "@/lib/utils";
-
-function displayFirstName(fullName?: string | null): string {
-  if (!fullName?.trim()) return "there";
-  return fullName.trim().split(/\s+/)[0];
-}
+import { getGreeting, formatPercent, displayFirstName } from "@/lib/utils";
 
 const mockData = {
   xpToNext: 5200,
@@ -45,8 +40,8 @@ const mockData = {
 };
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
-  const name = displayFirstName(session?.user?.name);
+  const { data: session, status } = useSession();
+  const name = displayFirstName(session?.user?.name, session?.user?.email);
   const level = session?.user?.level ?? 1;
   const xp = session?.user?.xp ?? 0;
   const { xpToNext, streak, predictedGrade, overallMastery } = mockData;
@@ -56,7 +51,7 @@ export default function DashboardPage() {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <div className="mb-8">
         <h1 className="text-2xl font-bold sm:text-3xl">
-          {getGreeting()}, {name}! 👋
+          {status === "loading" ? "Loading..." : `${getGreeting()}, ${name}!`} 👋
         </h1>
         <p className="mt-1 text-slate-600 dark:text-slate-400">
           Keep up the great work — you&apos;re on a {streak}-day streak!

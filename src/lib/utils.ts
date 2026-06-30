@@ -54,3 +54,9 @@ export function getGreeting(): string {
   if (hour < 17) return "Good afternoon";
   return "Good evening";
 }
+
+export function displayFirstName(fullName?: string | null, email?: string | null): string {
+  if (fullName?.trim()) return fullName.trim().split(/\s+/)[0];
+  if (email?.trim()) return email.split("@")[0];
+  return "Student";
+}

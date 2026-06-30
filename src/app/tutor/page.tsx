@@ -6,7 +6,7 @@ import { Send, Brain, Sparkles, BookOpen, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TutorMessageContent } from "@/components/tutor/message-content";
-import { getGreeting } from "@/lib/utils";
+import { getGreeting, displayFirstName } from "@/lib/utils";
 
 interface Message {
   role: "user" | "assistant";
@@ -24,7 +24,7 @@ const suggestedQuestions = [
 
 export default function TutorPage() {
   const { data: session } = useSession();
-  const firstName = session?.user?.name?.split(/\s+/)[0];
+  const firstName = displayFirstName(session?.user?.name, session?.user?.email);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -35,9 +35,7 @@ export default function TutorPage() {
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-    const greeting = firstName
-      ? `${getGreeting()}, ${firstName}! I'm your Science Hub AI Tutor. Ask me to explain any GCSE science topic — I'll give you definitions, equations, examples, and exam tips.`
-      : `${getGreeting()}! I'm your Science Hub AI Tutor. Ask me to explain any GCSE science topic — I'll give you definitions, equations, examples, and exam tips.`;
+    const greeting = `${getGreeting()}, ${firstName}! I'm your Science Hub AI Tutor. Ask me to explain any GCSE science topic — I'll give you definitions, equations, examples, and exam tips.`;
     setMessages([{ role: "assistant", content: greeting }]);
   }, [firstName]);
 

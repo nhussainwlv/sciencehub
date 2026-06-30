@@ -39,6 +39,7 @@ declare module "@auth/core/jwt" {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   providers: [
     Credentials({
       name: "credentials",
@@ -96,6 +97,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id!;
+        token.name = user.name;
+        token.email = user.email;
         token.role = user.role;
         token.keyStage = user.keyStage;
         token.examBoard = user.examBoard;
@@ -105,12 +108,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      session.user.id = token.id;
-      session.user.role = token.role;
-      session.user.keyStage = token.keyStage;
-      session.user.examBoard = token.examBoard;
-      session.user.xp = token.xp;
-      session.user.level = token.level;
+      if (session.user) {
+        session.user.id = token.id;
+        session.user.name = (token.name as string) ?? session.user.name;
+        session.user.email = (token.email as string) ?? session.user.email;
+        session.user.role = token.role;
+        session.user.keyStage = token.keyStage;
+        session.user.examBoard = token.examBoard;
+        session.user.xp = token.xp;
+        session.user.level = token.level;
+      }
       return session;
     },
   },
