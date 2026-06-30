@@ -2,6 +2,12 @@
 
 **Science Hub** is a production-ready, AI-powered UK science learning platform covering the complete National Curriculum from KS2 (Years 3–6), KS3 (Years 7–9), and KS4 GCSE (Years 10–11).
 
+## Live Demo
+
+🌐 **[https://sciencehub-2.onrender.com](https://sciencehub-2.onrender.com)**
+
+Deployed on [Render](https://render.com) with PostgreSQL. The free tier may sleep after inactivity — the first load can take 30–60 seconds.
+
 ## Features
 
 - **Complete UK Curriculum** — All KS2, KS3, and GCSE science topics with subtopics
@@ -20,7 +26,8 @@
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 15, React, TypeScript, Tailwind CSS |
+| Frontend | Next.js 16, React, TypeScript, Tailwind CSS |
+| Hosting | Render |
 | Backend | Next.js API Routes, Server Actions |
 | Database | PostgreSQL with Prisma ORM |
 | Auth | NextAuth.js (credentials) |
@@ -104,7 +111,30 @@ The Prisma schema includes models for:
 
 ## Deployment
 
-### Vercel (Recommended)
+### Production (Render)
+
+Live at **[https://sciencehub-2.onrender.com](https://sciencehub-2.onrender.com)**
+
+1. Create a **PostgreSQL** database on Render (free tier)
+2. Create a **Web Service** linked to this repo
+3. **Build command:** `npm install && npx prisma db push && npm run build`
+4. **Start command:** `npm start`
+5. Link the database to set `DATABASE_URL` automatically
+
+Environment variables:
+
+| Variable | Value |
+|----------|--------|
+| `DATABASE_URL` | From linked Render Postgres (Internal URL) |
+| `NEXTAUTH_SECRET` | `openssl rand -base64 32` |
+| `NEXTAUTH_URL` | `https://sciencehub-2.onrender.com` |
+| `NEXT_PUBLIC_APP_URL` | `https://sciencehub-2.onrender.com` |
+| `NEXT_PUBLIC_APP_NAME` | `Science Hub` |
+| `OPENAI_API_KEY` | Optional — enables full AI tutor |
+
+After deploy, seed demo accounts in the Render Shell: `npm run db:seed`
+
+### Vercel (alternative)
 
 ```bash
 npm i -g vercel
